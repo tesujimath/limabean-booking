@@ -1,0 +1,8 @@
+/.direnv/
+target/
+/steel/
+/*log
+**/tests/**/*.actual.beancount
+/result
+*-log.json
+.rebel_readline_history

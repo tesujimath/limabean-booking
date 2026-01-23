@@ -20,18 +20,20 @@
         let
           overlays = [ (import inputs.rust-overlay) ];
           pkgs = import inputs.nixpkgs {
+            inherit system;
+          };
+          pkgs-with-rust-overlay = import inputs.nixpkgs {
             inherit system overlays;
           };
           flakePkgs = {
             autobean-format = inputs.autobean-format.packages.${system}.default;
           };
           # cargo-nightly based on https://github.com/oxalica/rust-overlay/issues/82
-          nightly = pkgs.rust-bin.selectLatestNightlyWith (t: t.default);
+          nightly = pkgs-with-rust-overlay.rust-bin.selectLatestNightlyWith (t: t.default);
           cargo-nightly = pkgs.writeShellScriptBin "cargo-nightly" ''
             export RUSTC="${nightly}/bin/rustc";
             exec "${nightly}/bin/cargo" "$@"
           '';
-
 
           ci-packages = with pkgs; [
             bashInteractive
@@ -39,19 +41,21 @@
             diffutils
             just
 
-            rust-bin.stable.latest.default
+            cargo
             gcc
 
             clojure
             neil
+            git
           ];
 
+          version = (builtins.fromTOML (builtins.readFile ./rust/limabean/Cargo.toml)).package.version;
           limabean =
-            let cargo = builtins.fromTOML (builtins.readFile ./rust/limabean/Cargo.toml);
-            in pkgs.rustPlatform.buildRustPackage
+            pkgs.rustPlatform.buildRustPackage
               {
+                inherit version;
+
                 pname = "limabean";
-                version = cargo.package.version;
 
                 src = ./rust;
 
@@ -65,6 +69,10 @@
                   license = with licenses; [ asl20 mit ];
                   # maintainers = [ maintainers.tesujimath ];
                 };
+
+                propagatedBuildInputs = with pkgs; [
+                  clojure
+                ];
               };
 
         in
@@ -77,8 +85,10 @@
               cargo-udeps
               cargo-outdated
               cargo-edit
-              gdb
+              clippy
+              rustc
 
+              jre
               # useful tools:
               beancount
               beanquery
@@ -88,8 +98,10 @@
             shellHook = ''
               PATH=$PATH:$(pwd)/scripts.dev:$(pwd)/rust/target/debug
 
-              export LIMABEAN_DEPS=$(pwd)/examples/clj/deps.edn
-              export LIMABEAN_BEANFILE=$(pwd)/examples/beancount/full.beancount
+              export LIMABEAN_UBERJAR=$(pwd)/clj/target/limabean-${version}-standalone.jar
+              export LIMABEAN_CLJ_LOCAL_ROOT=$(pwd)/clj
+              export LIMABEAN_USER_CLJ=$(pwd)/examples/clj/user.clj
+              export LIMABEAN_BEANFILE=$(pwd)/test-cases/full.beancount
               export LIMABEAN_LOG=$(pwd)/limabean.log
             '';
           };
@@ -100,7 +112,7 @@
             tests = {
               type = "app";
               program = "${writeShellScript "limabean-tests" ''
-                export PATH=${pkgs.lib.makeBinPath (ci-packages ++ [limabean])}
+                export PATH=${pkgs.lib.makeBinPath ci-packages}:$(pwd)/rust/target/debug
                 just test
               ''}";
             };

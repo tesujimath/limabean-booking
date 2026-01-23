@@ -1,4 +1,5 @@
 (ns limabean.core.inventory
+  "Functions to build and query an inventory."
   (:require [limabean.core.cell :as cell :refer [cell]]))
 
 ;; TODO instead of explicit delay/force these functions should be macros,
@@ -63,8 +64,7 @@
   [method]
   (cond (method #{:strict :strict-with-size :fifo :lifo :hifo}) :merge
         (= method :none) :append
-        :else (throw (Exception. (format "unsupported booking method"
-                                         method)))))
+        :else (throw (Exception. (str "unsupported booking method " method)))))
 (defn- position-key
   "Return a key for a position which separates out by cost."
   [pos]
@@ -121,11 +121,13 @@
   (let [{:keys [reduce-f positions]} sca] (reduce-f rf result positions)))
 
 (defn accumulator
-  "Create an inventory accumulator."
-  ([method] (let [rule (booking-rule method)] {:rule rule, :scas {}})))
+  "Create an inventory accumulator with given booking method."
+  ([booking] (let [rule (booking-rule booking)] {:rule rule, :scas {}})))
 
 (defn accumulate
-  "Accumulate a position into an inventory"
+  "Accumulate a position into an inventory according to its booking method.
+
+  Position attributes are `:units`, `:cur`, and `:cost`."
   [inv p]
   (let [{:keys [rule scas]} inv
         ;; lose any extraneous attributes, such as might be in a posting
@@ -136,7 +138,7 @@
     (assoc inv :scas (assoc scas cur (sca-accumulate sca p)))))
 
 (defn positions
-  "Return the current balance of an inventory accumulator as a list of positions"
+  "Return the current balance of an inventory accumulator as a list of positions."
   [inv]
   (let [{:keys [scas]} inv
         currencies (sort (keys scas))]
@@ -166,19 +168,21 @@
     curs))
 
 (defn positions->units
-  "Collapse positions down to units only with no costs"
+  "Return positions collapsed down to units only with no costs."
   [ps]
   (let [by-cur (positions->units-by-currency ps)
         curs (sort (keys by-cur))]
     (mapv (fn [cur] {:units (get by-cur cur), :cur cur}) curs)))
 
 (defn positions->units-of
-  "Collapse positions down to units only of the specified currency with no costs, or zero if none"
+  "Return positions collapsed down to units only of the specified currency with no costs, or zero if none for that currency."
   [ps cur]
   (let [by-cur (positions->units-by-currency ps)] (get by-cur cur 0M)))
 
 (defn build
-  "Cumulate postings into inventory according to booking method"
+  "Cumulate postings into inventory according to booking method.
+
+  `acc-booking-fn` is a function which returns the booking method for an account."
   [postings acc-booking-fn]
   (let [init (transient {})
         cumulated (persistent!
@@ -200,10 +204,10 @@
                           result)))
               {}
               accounts)]
-    (cell/mark inv :inventory)))
+    inv))
 
-(defn currency-freqs
-  "Return map of frequency of currency use by currency"
+(defn cur-freq
+  "Return map of frequency of currency use by currency."
   [inv]
   (reduce (fn [curs acc]
             (reduce (fn [curs cur] (assoc curs cur (inc (get curs cur 0))))
@@ -212,16 +216,7 @@
     {}
     (cell/real-keys inv)))
 
-(defmethod cell :inventory
-  [inv]
-  (let [accounts (sort (cell/real-keys inv))]
-    (cell/stack (mapv (fn [account]
-                        (cell/row [(cell account) (cell (get inv account))]
-                                  cell/SPACE-MEDIUM))
-                  accounts))))
-
-
-(defn cost->cell
+(defn- cost->cell
   "Format a cost into a cell, avoiding the clutter of cell/type tagging"
   [cost]
   (cell/row [(cell (:date cost)) (cell (:cur cost)) (cell (:per-unit cost))

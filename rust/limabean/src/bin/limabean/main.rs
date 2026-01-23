@@ -6,18 +6,16 @@ fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
+    let runtime = Runtime::from_env();
     let args = std::env::args().collect::<Vec<_>>();
 
     if let Some("health") = args.get(1).map(String::as_str) {
-        health::check_all();
-    } else if let Some("bootstrap") = args.get(1).map(String::as_str) {
-        bootstrap::create_files();
+        health::check(&runtime, true);
     } else {
-        run::run(&args[1..]);
+        run::run(&runtime, &args[1..]);
     }
 }
 
-mod bootstrap;
-mod env;
 mod health;
 mod run;
+use run::Runtime;

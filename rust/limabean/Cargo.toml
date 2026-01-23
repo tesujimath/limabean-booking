@@ -1,6 +1,6 @@
 [package]
 name = "limabean"
-version = "0.1.0"
+version = "0.2.6"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Beancount frontend using Rust and Clojure and the Lima parser"
@@ -17,7 +17,7 @@ name = "limabean-pod"
 path = "src/bin/limabean-pod/main.rs"
 
 [dependencies]
-limabean-booking = { path = "../limabean-booking", version = "0.7.0", features = [
+limabean-booking = { path = "../limabean-booking", version = "0.7.1", features = [
   "lima-parser-types",
   "rust-decimal",
 ] }
@@ -43,7 +43,6 @@ tabulator = { version = "0.5.0", features = [
   "rust_decimal",
 ] }
 itertools = "0.14.0"
-xdg = "3.0.0"
 # tabulator = { path = "../../../tabulator", features = [
 #   "bin",
 #   "num-bigint",

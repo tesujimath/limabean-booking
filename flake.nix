@@ -8,10 +8,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-utils.url = "github:numtide/flake-utils";
-    autobean-format = {
-      url = "github:SEIAROTg/autobean-format";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = inputs:
@@ -25,9 +21,6 @@
           pkgs-with-rust-overlay = import inputs.nixpkgs {
             inherit system overlays;
           };
-          flakePkgs = {
-            autobean-format = inputs.autobean-format.packages.${system}.default;
-          };
           # cargo-nightly based on https://github.com/oxalica/rust-overlay/issues/82
           nightly = pkgs-with-rust-overlay.rust-bin.selectLatestNightlyWith (t: t.default);
           cargo-nightly = pkgs.writeShellScriptBin "cargo-nightly" ''
@@ -39,40 +32,35 @@
             bashInteractive
             coreutils
             diffutils
-            just
 
             cargo
+          ] ++ (lib.optionals (builtins.match ".*-linux" system != null) [
             gcc
+          ]) ++ (lib.optionals (builtins.match ".*-darwin" system != null) [
+            clang
+            libiconv
+          ]);
 
-            clojure
-            neil
-            git
-          ];
-
-          version = (builtins.fromTOML (builtins.readFile ./rust/limabean/Cargo.toml)).package.version;
-          limabean =
+          version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
+          limabean-booking =
             pkgs.rustPlatform.buildRustPackage
               {
                 inherit version;
 
-                pname = "limabean";
+                pname = "limabean-booking";
 
-                src = ./rust;
+                src = ./.;
 
                 cargoDeps = pkgs.rustPlatform.importCargoLock {
-                  lockFile = ./rust/Cargo.lock;
+                  lockFile = ./Cargo.lock;
                 };
 
                 meta = with pkgs.lib; {
-                  description = "Beancount frontend using Rust and Clojure and the Lima parser";
-                  homepage = "https://github.com/tesujimath/limabean";
+                  description = "Generic Beancount booking algorithm in Rust";
+                  homepage = "https://github.com/tesujimath/limabean-booking";
                   license = with licenses; [ asl20 mit ];
                   # maintainers = [ maintainers.tesujimath ];
                 };
-
-                propagatedBuildInputs = with pkgs; [
-                  clojure
-                ];
               };
 
         in
@@ -87,36 +75,10 @@
               cargo-edit
               clippy
               rustc
-
-              jre
-              # useful tools:
-              beancount
-              beanquery
-              flakePkgs.autobean-format
             ] ++ ci-packages;
-
-            shellHook = ''
-              PATH=$PATH:$(pwd)/scripts.dev:$(pwd)/rust/target/debug
-
-              export LIMABEAN_UBERJAR=$(pwd)/clj/target/limabean-${version}-standalone.jar
-              export LIMABEAN_CLJ_LOCAL_ROOT=$(pwd)/clj
-              export LIMABEAN_USER_CLJ=$(pwd)/examples/clj/user.clj
-              export LIMABEAN_BEANFILE=$(pwd)/test-cases/full.beancount
-              export LIMABEAN_LOG=$(pwd)/limabean.log
-            '';
           };
 
-          packages.default = limabean;
-
-          apps = {
-            tests = {
-              type = "app";
-              program = "${writeShellScript "limabean-tests" ''
-                export PATH=${pkgs.lib.makeBinPath ci-packages}:$(pwd)/rust/target/debug
-                just test
-              ''}";
-            };
-          };
+          packages.default = limabean-booking;
         }
       );
 }

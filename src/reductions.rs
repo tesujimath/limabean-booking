@@ -21,14 +21,14 @@ where
 
 pub(crate) fn book_reductions<'a, 'p, B, P, T, I, M>(
     annotateds: Vec<AnnotatedPosting<'p, P, B::Currency>>,
-    tolerance: T,
+    tolerance: &T,
     inventory: I,
     method: M,
 ) -> Result<Reductions<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug,
-    T: Tolerance<Types = B> + Copy,
+    T: Tolerance<Types = B>,
     I: Fn(B::Account) -> Option<&'a Positions<B>> + Copy,
     M: Fn(B::Account) -> Booking + Copy,
 {
@@ -70,7 +70,7 @@ where
 
 fn reduce<'a, 'p, B, P, T>(
     annotated: AnnotatedPosting<'p, P, B::Currency>,
-    tolerance: T,
+    tolerance: &T,
     method: Booking,
     previous_positions: Option<&Positions<B>>,
 ) -> Result<Reduced<'p, B, P>, BookingError>
@@ -255,7 +255,7 @@ fn is_sell_all_at_cost<B, T>(
     posting_currency: &B::Currency,
     positions: &Positions<B>,
     matched: &[usize],
-    tolerance: T,
+    tolerance: &T,
 ) -> bool
 where
     B: BookingTypes,

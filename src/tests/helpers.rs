@@ -8,7 +8,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::{
     Booking, BookingError, Bookings, Cost, Interpolated, Inventory, LimaParserBookingTypes,
-    Position, Positions, Tolerance, book::BookingsAndResiduals, book_with_residuals,
+    LimaTolerance, Position, Positions, Tolerance, book::BookingsAndResiduals, book_with_residuals,
     is_supported_method,
 };
 
@@ -51,7 +51,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
             options,
             ..
         }) => {
-            let tolerance = &options;
+            let tolerance: LimaTolerance = (&options).into();
             let mut ante_inventory = Inventory::default();
 
             if let Some((date, ante_postings, _)) = get_postings(&directives, ANTE_TAG).next() {
@@ -61,7 +61,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
                             updated_inventory, ..
                         },
                     ..
-                } = book_with_residuals(date, &ante_postings, tolerance, |_| None, |_| method)
+                } = book_with_residuals(date, &ante_postings, &tolerance, |_| None, |_| method)
                     .unwrap();
 
                 ante_inventory = updated_inventory;
@@ -84,7 +84,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
                     date,
                     &postings,
                     &mut actual_inventory,
-                    tolerance,
+                    &tolerance,
                     method,
                     expected_err.as_ref(),
                     &location,
@@ -94,7 +94,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
                         actual_inventory.insert(acc, positions);
                     }
 
-                    check_inventory_as_expected(actual_inventory, &directives, tolerance, method);
+                    check_inventory_as_expected(actual_inventory, &directives, &tolerance, method);
 
                     check_postings_as_expected(interpolated_postings, &directives);
                 }
@@ -118,7 +118,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
                         date,
                         &postings,
                         &mut actual_inventory,
-                        tolerance,
+                        &tolerance,
                         method,
                         expected_err.as_ref(),
                         &location,
@@ -132,7 +132,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
                     }
                 }
 
-                check_inventory_as_expected(actual_inventory, &directives, tolerance, method);
+                check_inventory_as_expected(actual_inventory, &directives, &tolerance, method);
 
                 check_postings_as_expected(actual_postings, &directives);
             }
@@ -159,14 +159,14 @@ fn book_and_check_error<'a, 'p, T>(
     date: Date,
     postings: &[&'a parser::Spanned<parser::Posting<'a>>],
     inventory: &mut Inventory<LimaParserBookingTypes<'a>>,
-    tolerance: T,
+    tolerance: &T,
     method: Booking,
     expected_err: Option<&BookingError>,
     location_in_case_of_error: &str,
     source_in_case_of_error: &str,
 ) -> Option<Bookings<'p, LimaParserBookingTypes<'a>, parser::Spanned<parser::Posting<'a>>>>
 where
-    T: Tolerance<Types = LimaParserBookingTypes<'a>> + Copy,
+    T: Tolerance<Types = LimaParserBookingTypes<'a>>,
 {
     match (
         book_with_residuals(
@@ -195,10 +195,10 @@ where
 fn check_inventory_as_expected<'a, 'p, T>(
     actual_inventory: Inventory<LimaParserBookingTypes<'a>>,
     directives: &'p [parser::Spanned<parser::Directive<'a>>],
-    tolerance: T,
+    tolerance: &T,
     method: Booking,
 ) where
-    T: Tolerance<Types = LimaParserBookingTypes<'a>> + Copy,
+    T: Tolerance<Types = LimaParserBookingTypes<'a>>,
 {
     let (date, postings, _) = get_postings(directives, EX_TAG)
         .next()
@@ -288,16 +288,16 @@ fn check_postings_as_expected<'a, 'p>(
                 let expected_account = posting.account().item().as_ref();
                 if let Some(cost) = posting.cost_spec() {
                     let per_unit = cost.per_unit().map(|x| x.item().value());
-                    let currency = cost.currency().map(|x| x.item());
+                    let currency = cost.currency().map(|x| x.item().into());
                     let date = cost.date().map(|x| x.item());
                     let label = cost.label().map(|x| *x.item());
                     let merge = cost.merge();
                     (
                         expected_account,
                         posting.amount().unwrap().item().value(),
-                        *posting.currency().unwrap().item(),
+                        posting.currency().unwrap().item().into(),
                         per_unit,
-                        currency.copied(),
+                        currency,
                         date.copied(),
                         label,
                         merge,
@@ -306,7 +306,7 @@ fn check_postings_as_expected<'a, 'p>(
                     (
                         expected_account,
                         posting.amount().unwrap().item().value(),
-                        *posting.currency().unwrap().item(),
+                        posting.currency().unwrap().item().into(),
                         None,
                         None,
                         None,
@@ -398,19 +398,19 @@ pub(crate) fn positions_test(
                                 date: cost_date,
                                 per_unit: cost_per_unit,
                                 total: Decimal::ZERO, // doesn't matter for this test
-                                currency: *cost_currency,
+                                currency: cost_currency.into(),
                                 label: cost_label,
                                 merge,
                             };
 
                             Position {
-                                currency: *currency,
+                                currency: currency.into(),
                                 units,
                                 cost: Some(cost),
                             }
                         } else {
                             Position {
-                                currency: *currency,
+                                currency: currency.into(),
                                 units,
                                 cost: None,
                             }
@@ -434,13 +434,13 @@ pub(crate) fn positions_test(
                     .iter()
                     .map(|p| {
                         (
-                            p.currency.as_ref(),
+                            p.currency,
                             p.units,
                             p.cost.as_ref().map(|cost| {
                                 (
                                     cost.date,
                                     cost.per_unit,
-                                    cost.currency.as_ref(),
+                                    cost.currency,
                                     cost.label.as_ref().map(|label| *label),
                                     cost.merge,
                                 )

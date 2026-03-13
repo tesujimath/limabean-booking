@@ -24,12 +24,12 @@ pub(crate) fn interpolate_from_costed<'a, 'p, B, P, T>(
     date: B::Date,
     currency: &B::Currency,
     costeds: Vec<BookedOrUnbookedPosting<'p, B, P>>,
-    tolerance: T,
+    tolerance: &T,
 ) -> Result<Interpolation<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug,
-    T: Tolerance<Types = B> + Copy,
+    T: Tolerance<Types = B>,
 {
     let mut weights = costeds.iter().map(|c| c.weight()).collect::<Vec<_>>();
     let mut residual = tolerance_residual(tolerance, weights.iter().filter_map(|w| *w), currency);
@@ -73,7 +73,7 @@ pub(crate) fn interpolate_from_annotated<'a, 'p, B, P, T>(
     currency: &B::Currency,
     weight: B::Number,
     annotated: AnnotatedPosting<'p, P, B::Currency>,
-    tolerance: T,
+    tolerance: &T,
 ) -> Result<
     (
         Interpolated<'p, B, P>,
@@ -224,7 +224,7 @@ fn units<B, P, T>(
     weight: B::Number,
     currency: &B::Currency,
     annotated_currency: Option<&B::Currency>,
-    tolerance: T,
+    tolerance: &T,
 ) -> Option<UnitsAndConversion<B::Number>>
 where
     B: BookingTypes,
@@ -254,7 +254,7 @@ fn units_from_cost_spec<B, CS, T>(
     posting_units: Option<B::Number>,
     weight: B::Number,
     cost_spec: &CS,
-    tolerance: T,
+    tolerance: &T,
 ) -> Option<UnitsAndConversion<B::Number>>
 where
     B: BookingTypes,
@@ -300,7 +300,7 @@ fn units_from_price_spec<B, PS, T>(
     posting_units: Option<B::Number>,
     weight: B::Number,
     price_spec: &PS,
-    tolerance: T,
+    tolerance: &T,
 ) -> Option<UnitsAndConversion<B::Number>>
 where
     B: BookingTypes,
@@ -338,7 +338,7 @@ where
 fn infer_per_unit<B, T>(
     total: B::Number,
     units: B::Number,
-    _tolerance: T,
+    _tolerance: &T,
 ) -> Option<UnitsAndConversion<B::Number>>
 where
     B: BookingTypes,

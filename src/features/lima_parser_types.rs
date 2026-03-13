@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{collections::HashMap, marker::PhantomData};
 
 use super::{Booking, BookingTypes, CostSpec, PostingSpec, PriceSpec, Tolerance};
 use beancount_parser_lima as parser;
@@ -11,7 +11,7 @@ pub struct LimaParserBookingTypes<'a>(PhantomData<&'a str>);
 impl<'a> BookingTypes for LimaParserBookingTypes<'a> {
     type Account = &'a str;
     type Date = time::Date;
-    type Currency = parser::Currency<'a>;
+    type Currency = &'a str;
     type Number = Decimal;
     type Label = &'a str;
 }
@@ -25,8 +25,8 @@ impl<'a> PostingSpec for parser::Spanned<parser::Posting<'a>> {
         parser::Posting::account(self).item().into()
     }
 
-    fn currency(&self) -> Option<parser::Currency<'a>> {
-        parser::Posting::currency(self).map(|cur| *cur.item())
+    fn currency(&self) -> Option<&'a str> {
+        parser::Posting::currency(self).map(|cur| cur.item().into())
     }
 
     fn units(&self) -> Option<Decimal> {
@@ -44,19 +44,11 @@ impl<'a> PostingSpec for parser::Spanned<parser::Posting<'a>> {
     }
 }
 
-// impl<'a> BookingTypes for &'a parser::CostSpec<'a> {
-//     type Account = &'a str;
-//     type Date = time::Date;
-//     type Currency = parser::Currency<'a>;
-//     type Number = Decimal;
-//     type Label = &'a str;
-// }
-
 impl<'a> CostSpec for parser::CostSpec<'a> {
     type Types = LimaParserBookingTypes<'a>;
 
-    fn currency(&self) -> Option<parser::Currency<'a>> {
-        parser::CostSpec::currency(self).map(|currency| *currency.item())
+    fn currency(&self) -> Option<&'a str> {
+        parser::CostSpec::currency(self).map(|currency| currency.item().into())
     }
 
     fn per_unit(&self) -> Option<Decimal> {
@@ -80,23 +72,15 @@ impl<'a> CostSpec for parser::CostSpec<'a> {
     }
 }
 
-// impl<'a> BookingTypes for &'a parser::PriceSpec<'a> {
-//     type Account = &'a str;
-//     type Date = time::Date;
-//     type Currency = parser::Currency<'a>;
-//     type Number = Decimal;
-//     type Label = &'a str;
-// }
-
 impl<'a> PriceSpec for parser::PriceSpec<'a> {
     type Types = LimaParserBookingTypes<'a>;
 
-    fn currency(&self) -> Option<parser::Currency<'a>> {
+    fn currency(&self) -> Option<&'a str> {
         use parser::PriceSpec::*;
 
         match self {
-            BareCurrency(currency) => Some(*currency),
-            CurrencyAmount(_, currency) => Some(*currency),
+            BareCurrency(currency) => Some(currency.into()),
+            CurrencyAmount(_, currency) => Some(currency.into()),
             _ => None,
         }
     }
@@ -127,24 +111,57 @@ impl<'a> PriceSpec for parser::PriceSpec<'a> {
 impl<'a> BookingTypes for &parser::Options<'a> {
     type Account = &'a str;
     type Date = time::Date;
-    type Currency = parser::Currency<'a>;
+    type Currency = &'a str;
     type Number = Decimal;
     type Label = &'a str;
 }
 
-impl<'a> Tolerance for &parser::Options<'a> {
+/// tolerance converted from parser options allowing for
+/// currency lookup by string
+#[derive(Clone, Debug)]
+pub struct LimaTolerance<'a> {
+    default: HashMap<&'a str, Decimal>,
+    default_fallback: Option<Decimal>,
+    multiplier: Option<Decimal>,
+}
+
+impl<'a> From<&parser::Options<'a>> for LimaTolerance<'a> {
+    fn from(value: &parser::Options<'a>) -> Self {
+        let mut default = HashMap::default();
+        let mut default_fallback = None;
+        let multiplier = value.inferred_tolerance_multiplier().map(|x| *x.item());
+
+        for (cur, tol) in value.inferred_tolerance_defaults() {
+            if let Some(cur) = cur {
+                default.insert(cur.into(), tol);
+            } else {
+                default_fallback = Some(tol);
+            }
+        }
+
+        LimaTolerance {
+            default,
+            default_fallback,
+            multiplier,
+        }
+    }
+}
+
+impl<'a> Tolerance for LimaTolerance<'a> {
     type Types = LimaParserBookingTypes<'a>;
 
     fn inferred_tolerance_default(
         &self,
         currency: &<Self::Types as BookingTypes>::Currency,
     ) -> Option<<Self::Types as BookingTypes>::Number> {
-        parser::Options::inferred_tolerance_default(self, currency)
-            .or_else(|| parser::Options::inferred_tolerance_default_fallback(self))
+        self.default
+            .get(currency)
+            .copied()
+            .or(self.default_fallback)
     }
 
     fn inferred_tolerance_multiplier(&self) -> Option<<Self::Types as BookingTypes>::Number> {
-        parser::Options::inferred_tolerance_multiplier(self).map(|x| *x.item())
+        self.multiplier
     }
 }
 

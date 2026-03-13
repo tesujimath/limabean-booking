@@ -3,7 +3,7 @@ use super::{Booking, BookingTypes, CostSpec, Number, PostingSpec, PriceSpec, Sig
 #[cfg(feature = "lima-parser-types")]
 mod lima_parser_types;
 #[cfg(feature = "lima-parser-types")]
-pub use lima_parser_types::LimaParserBookingTypes;
+pub use lima_parser_types::{LimaParserBookingTypes, LimaTolerance};
 
 #[cfg(feature = "rust-decimal")]
 mod rust_decimal;

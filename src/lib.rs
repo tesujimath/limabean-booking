@@ -13,7 +13,7 @@ pub use errors::{BookingError, PostingBookingError, TransactionBookingError};
 
 mod features;
 #[cfg(feature = "lima-parser-types")]
-pub use features::LimaParserBookingTypes;
+pub use features::{LimaParserBookingTypes, LimaTolerance};
 
 mod interpolate;
 pub(crate) use interpolate::{Interpolation, interpolate_from_costed};

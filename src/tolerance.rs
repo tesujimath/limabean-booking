@@ -3,7 +3,7 @@ use crate::{BookingTypes, Number, Tolerance};
 // Beancount Precision & Tolerances
 // https://docs.google.com/document/d/1lgHxUUEY-UVEgoF6cupz2f_7v7vEF7fiJyiSlYYlhOo
 pub(crate) fn tolerance_residual<B, T>(
-    tol: T,
+    tol: &T,
     values: impl Iterator<Item = B::Number>,
     cur: &B::Currency,
 ) -> Option<B::Number>

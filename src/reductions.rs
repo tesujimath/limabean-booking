@@ -27,7 +27,7 @@ pub(crate) fn book_reductions<'a, 'p, B, P, T, I, M>(
 ) -> Result<Reductions<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
     T: Tolerance<Types = B> + Copy,
     I: Fn(B::Account) -> Option<&'a Positions<B>> + Copy,
     M: Fn(B::Account) -> Booking + Copy,
@@ -76,7 +76,7 @@ fn reduce<'a, 'p, B, P, T>(
 ) -> Result<Reduced<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
     T: Tolerance<Types = B>,
 {
     use BookedOrUnbookedPosting::*;
@@ -191,7 +191,7 @@ fn reduce_matched_position<'a, 'p, B, P>(
 ) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
 {
     use BookedOrUnbookedPosting::*;
 
@@ -283,7 +283,7 @@ fn reduce_multiple_positions<'a, 'p, B, P>(
 ) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
 {
     match method {
         Booking::Fifo | Booking::Lifo | Booking::Hifo => {
@@ -366,7 +366,7 @@ fn reduce_ordered_positions<'a, 'p, B, P>(
 ) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
 {
     use BookedOrUnbookedPosting::*;
 
@@ -468,7 +468,7 @@ fn reduce_all_sold_at_cost<'a, 'p, B, P>(
 ) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
 {
     use BookedOrUnbookedPosting::*;
 

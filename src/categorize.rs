@@ -20,7 +20,7 @@ pub(crate) fn categorize_by_currency<'a, 'p, B, P, I>(
 ) -> Result<CategorizedByCurrency<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
     I: Fn(B::Account) -> Option<&'a Positions<B>> + Copy,
 {
     let mut currency_groups = HashMapOfVec::default();
@@ -151,14 +151,14 @@ fn infer_unknown_from_single_currency_group<'p, B, P>(
     currency_groups.push_or_insert(only_bucket.clone(), inferred);
 }
 
-pub(crate) fn infer_unknowns_from_account_inference<'a, 'b, 'p, B, P, I>(
+pub(crate) fn infer_unknowns_from_account_inference<'a, 'p, B, P, I>(
     unknown: Vec<AnnotatedPosting<'p, P, B::Currency>>,
     inventory: I,
     currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<'p, P, B::Currency>>,
 ) -> Result<(), BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
     I: Fn(B::Account) -> Option<&'a Positions<B>> + Copy,
 {
     let mut account_currency_lookup = HashMap::<B::Account, Option<B::Currency>>::default();

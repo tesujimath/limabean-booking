@@ -20,7 +20,7 @@ where
     pub(crate) residual: Option<B::Number>,
 }
 
-pub(crate) fn interpolate_from_costed<'a, 'b, 'p, B, P, T>(
+pub(crate) fn interpolate_from_costed<'a, 'p, B, P, T>(
     date: B::Date,
     currency: &B::Currency,
     costeds: Vec<BookedOrUnbookedPosting<'p, B, P>>,
@@ -28,7 +28,7 @@ pub(crate) fn interpolate_from_costed<'a, 'b, 'p, B, P, T>(
 ) -> Result<Interpolation<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
     T: Tolerance<Types = B> + Copy,
 {
     let mut weights = costeds.iter().map(|c| c.weight()).collect::<Vec<_>>();
@@ -68,7 +68,7 @@ where
     })
 }
 
-pub(crate) fn interpolate_from_annotated<'a, 'b, 'p, B, P, T>(
+pub(crate) fn interpolate_from_annotated<'a, 'p, B, P, T>(
     date: B::Date,
     currency: &B::Currency,
     weight: B::Number,
@@ -83,7 +83,7 @@ pub(crate) fn interpolate_from_annotated<'a, 'b, 'p, B, P, T>(
 >
 where
     B: BookingTypes + 'a,
-    P: PostingSpec<Types = B> + Debug + 'a,
+    P: PostingSpec<Types = B> + Debug,
     T: Tolerance<Types = B>,
 {
     match (

@@ -274,11 +274,11 @@ where
     pub merge: bool,
 }
 
-impl<B> From<(B::Currency, PostingCost<B>)> for Cost<B>
+impl<B> From<(&B::Currency, &PostingCost<B>)> for Cost<B>
 where
     B: BookingTypes,
 {
-    fn from(value: (B::Currency, PostingCost<B>)) -> Self {
+    fn from(value: (&B::Currency, &PostingCost<B>)) -> Self {
         let (
             currency,
             PostingCost {
@@ -291,12 +291,12 @@ where
             },
         ) = value;
         Self {
-            date,
-            per_unit,
-            total,
-            currency,
-            label,
-            merge,
+            date: *date,
+            per_unit: *per_unit,
+            total: *total,
+            currency: currency.clone(),
+            label: label.clone(),
+            merge: *merge,
         }
     }
 }

@@ -10,21 +10,21 @@ use super::{
 };
 
 #[derive(Debug)]
-pub(crate) struct Reductions<B, P>
+pub(crate) struct Reductions<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
 {
     pub(crate) updated_inventory: Inventory<B>,
-    pub(crate) postings: Vec<BookedOrUnbookedPosting<B, P>>,
+    pub(crate) postings: Vec<BookedOrUnbookedPosting<'p, B, P>>,
 }
 
-pub(crate) fn book_reductions<'a, B, P, T, I, M>(
-    annotateds: Vec<AnnotatedPosting<P, B::Currency>>,
+pub(crate) fn book_reductions<'a, 'p, B, P, T, I, M>(
+    annotateds: Vec<AnnotatedPosting<'p, P, B::Currency>>,
     tolerance: T,
     inventory: I,
     method: M,
-) -> Result<Reductions<B, P>, BookingError>
+) -> Result<Reductions<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -59,21 +59,21 @@ where
     })
 }
 
-struct Reduced<B, P>
+struct Reduced<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
 {
-    reducing_posting: BookedOrUnbookedPosting<B, P>,
+    reducing_posting: BookedOrUnbookedPosting<'p, B, P>,
     updated_positions: Option<Positions<B>>,
 }
 
-fn reduce<'a, B, P, T>(
-    annotated: AnnotatedPosting<P, B::Currency>,
+fn reduce<'a, 'p, B, P, T>(
+    annotated: AnnotatedPosting<'p, P, B::Currency>,
     tolerance: T,
     method: Booking,
     previous_positions: Option<&Positions<B>>,
-) -> Result<Reduced<B, P>, BookingError>
+) -> Result<Reduced<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -91,11 +91,7 @@ where
         && is_potential_reduction(posting_units, posting_currency, positions)
     {
         // find positions whose costs match what we have
-        let matched = match_positions(
-            posting_currency,
-            annotated.posting.cost().as_ref(),
-            positions,
-        );
+        let matched = match_positions(posting_currency, annotated.posting.cost(), positions);
 
         if matched.is_empty() {
             Err(BookingError::Posting(
@@ -185,14 +181,14 @@ where
     }
 }
 
-fn reduce_matched_position<'a, B, P>(
+fn reduce_matched_position<'a, 'p, B, P>(
     posting_units: B::Number,
     posting_currency: &B::Currency,
-    posting: P,
+    posting: &'p P,
     posting_idx: usize,
     previous_positions: &Positions<B>,
     matched_position_idx: usize,
-) -> Result<(BookedOrUnbookedPosting<B, P>, Positions<B>), BookingError>
+) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -276,15 +272,15 @@ where
     tol.is_none()
 }
 
-fn reduce_multiple_positions<'a, B, P>(
+fn reduce_multiple_positions<'a, 'p, B, P>(
     posting_units: B::Number,
     posting_currency: &B::Currency,
-    posting: P,
+    posting: &'p P,
     posting_idx: usize,
     positions: &Positions<B>,
     mut matched: Vec<usize>,
     method: Booking,
-) -> Result<(BookedOrUnbookedPosting<B, P>, Positions<B>), BookingError>
+) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -359,15 +355,15 @@ where
     }
 }
 
-fn reduce_ordered_positions<'a, B, P>(
+fn reduce_ordered_positions<'a, 'p, B, P>(
     posting_units: B::Number,
     posting_currency: B::Currency,
     cost_currency: B::Currency,
-    posting: P,
+    posting: &'p P,
     posting_idx: usize,
     positions: &Positions<B>,
     matched: &[usize],
-) -> Result<(BookedOrUnbookedPosting<B, P>, Positions<B>), BookingError>
+) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -462,14 +458,14 @@ where
     }
 }
 
-fn reduce_all_sold_at_cost<'a, B, P>(
+fn reduce_all_sold_at_cost<'a, 'p, B, P>(
     posting_units: B::Number,
     posting_currency: &B::Currency,
-    posting: P,
+    posting: &'p P,
     posting_idx: usize,
     positions: &Positions<B>,
     matched: Vec<usize>,
-) -> Result<(BookedOrUnbookedPosting<B, P>, Positions<B>), BookingError>
+) -> Result<(BookedOrUnbookedPosting<'p, B, P>, Positions<B>), BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,

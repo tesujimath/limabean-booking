@@ -27,13 +27,13 @@ pub fn is_supported_method(method: Booking) -> bool {
 /// Book the postings for the given date, returning updated inventory and interpolated postings.
 /// The interpolated postings are aligned with the original postings, in that they may be zipped together and
 /// will always correspond.
-pub fn book<'a, 'b, B, P, T, I, M>(
+pub fn book<'a, 'b, 'p, B, P, T, I, M>(
     date: B::Date,
-    postings: &[P],
+    postings: &[&'p P],
     tolerance: T,
     inventory: I,
     method: M,
-) -> Result<Bookings<B, P>, BookingError>
+) -> Result<Bookings<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -41,6 +41,7 @@ where
     I: Fn(B::Account) -> Option<&'b Positions<B>> + Copy,
     M: Fn(B::Account) -> Booking + Copy,
     'a: 'b,
+    'p: 'b,
 {
     let BookingsAndResiduals {
         bookings,
@@ -64,24 +65,24 @@ where
 
 pub(crate) type Residuals<C, N> = HashMap<C, N>;
 
-pub(crate) struct BookingsAndResiduals<B, P>
+pub(crate) struct BookingsAndResiduals<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B> + Debug,
 {
-    pub(crate) bookings: Bookings<B, P>,
+    pub(crate) bookings: Bookings<'p, B, P>,
     pub(crate) residuals: Residuals<B::Currency, B::Number>,
 }
 
 // this exists so we can test the booking algorithm with unbalanced transactions
 // as per OG Beancount booking_full_test.py
-pub(crate) fn book_with_residuals<'a, 'b, B, P, T, I, M>(
+pub(crate) fn book_with_residuals<'a, 'b, 'p, B, P, T, I, M>(
     date: B::Date,
-    postings: &[P],
+    postings: &[&'p P],
     tolerance: T,
     inventory: I,
     method: M,
-) -> Result<BookingsAndResiduals<B, P>, BookingError>
+) -> Result<BookingsAndResiduals<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -89,6 +90,7 @@ where
     I: Fn(B::Account) -> Option<&'b Positions<B>> + Copy,
     M: Fn(B::Account) -> Booking + Copy,
     'a: 'b,
+    'p: 'b,
 {
     let CategorizedByCurrency(currency_groups) = categorize_by_currency(postings, inventory)?;
 
@@ -129,17 +131,17 @@ where
     })
 }
 
-struct BookingAccumulator<B, P>
+struct BookingAccumulator<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
 {
-    interpolated_postings: Vec<Option<Interpolated<B, P>>>,
+    interpolated_postings: Vec<Option<Interpolated<'p, B, P>>>,
     updated_inventory: Inventory<B>,
     residuals: Residuals<B::Currency, B::Number>,
 }
 
-impl<B, P> BookingAccumulator<B, P>
+impl<'p, B, P> BookingAccumulator<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
@@ -153,14 +155,14 @@ where
     }
 }
 
-fn book_currency_group<'a, 'b, B, P, T, I, M>(
+fn book_currency_group<'a, 'b, 'p, B, P, T, I, M>(
     date: B::Date,
     cur: B::Currency,
-    annotated_postings: Vec<AnnotatedPosting<P, B::Currency>>,
+    annotated_postings: Vec<AnnotatedPosting<'p, P, B::Currency>>,
     tolerance: T,
     inventory: I,
     method: M,
-    accumulator: &mut BookingAccumulator<B, P>,
+    accumulator: &mut BookingAccumulator<'p, B, P>,
 ) -> Result<(), BookingError>
 where
     B: BookingTypes + 'a,
@@ -234,8 +236,8 @@ where
     }
 }
 
-fn book_augmentations<'a, 'b, B, P, I, M>(
-    interpolateds: impl Iterator<Item = &'b Interpolated<B, P>>,
+fn book_augmentations<'a, 'b, 'p, B, P, I, M>(
+    interpolateds: impl Iterator<Item = &'b Interpolated<'p, B, P>>,
     inventory: I,
     method: M,
 ) -> Result<Inventory<B>, BookingError>
@@ -245,6 +247,8 @@ where
     I: Fn(B::Account) -> Option<&'a Positions<B>> + Copy,
     M: Fn(B::Account) -> Booking + Copy,
     'a: 'b,
+    'a: 'p,
+    'p: 'b,
 {
     let mut updated_inventory = HashMap::default();
 

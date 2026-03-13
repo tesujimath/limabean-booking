@@ -48,18 +48,18 @@ impl<K, V> Deref for HashMapOfVec<K, V> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct AnnotatedPosting<P, C>
+pub(crate) struct AnnotatedPosting<'p, P, C>
 where
     C: Clone,
 {
-    pub(crate) posting: P,
+    pub(crate) posting: &'p P,
     pub(crate) idx: usize,
     pub(crate) currency: Option<C>,
     pub(crate) cost_currency: Option<C>,
     pub(crate) price_currency: Option<C>,
 }
 
-impl<P, C> AnnotatedPosting<P, C>
+impl<'p, P, C> AnnotatedPosting<'p, P, C>
 where
     P: PostingSpec,
     C: Clone,
@@ -85,16 +85,16 @@ where
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum BookedOrUnbookedPosting<B, P>
+pub(crate) enum BookedOrUnbookedPosting<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
 {
-    Booked(Interpolated<B, P>),
-    Unbooked(AnnotatedPosting<P, B::Currency>),
+    Booked(Interpolated<'p, B, P>),
+    Unbooked(AnnotatedPosting<'p, P, B::Currency>),
 }
 
-impl<B, P> BookedOrUnbookedPosting<B, P>
+impl<'p, B, P> BookedOrUnbookedPosting<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,

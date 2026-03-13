@@ -7,25 +7,25 @@ use super::{
 };
 
 #[derive(Debug)]
-pub(crate) struct Interpolation<B, P>
+pub(crate) struct Interpolation<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
 {
     pub(crate) booked_and_unbooked_postings: Vec<(
-        Interpolated<B, P>,
+        Interpolated<'p, B, P>,
         bool, // booked
     )>,
 
     pub(crate) residual: Option<B::Number>,
 }
 
-pub(crate) fn interpolate_from_costed<'a, 'b, B, P, T>(
+pub(crate) fn interpolate_from_costed<'a, 'b, 'p, B, P, T>(
     date: B::Date,
     currency: &B::Currency,
-    costeds: Vec<BookedOrUnbookedPosting<B, P>>,
+    costeds: Vec<BookedOrUnbookedPosting<'p, B, P>>,
     tolerance: T,
-) -> Result<Interpolation<B, P>, BookingError>
+) -> Result<Interpolation<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -68,15 +68,15 @@ where
     })
 }
 
-pub(crate) fn interpolate_from_annotated<'a, 'b, B, P, T>(
+pub(crate) fn interpolate_from_annotated<'a, 'b, 'p, B, P, T>(
     date: B::Date,
     currency: &B::Currency,
     weight: B::Number,
-    annotated: AnnotatedPosting<P, B::Currency>,
+    annotated: AnnotatedPosting<'p, P, B::Currency>,
     tolerance: T,
 ) -> Result<
     (
-        Interpolated<B, P>,
+        Interpolated<'p, B, P>,
         bool, // booked
     ),
     BookingError,
@@ -88,7 +88,7 @@ where
 {
     match (
         units(
-            &annotated.posting,
+            annotated.posting,
             weight,
             currency,
             annotated.currency.as_ref(),
@@ -239,9 +239,9 @@ where
         posting
     );
     if let Some(cost_spec) = posting.cost() {
-        units_from_cost_spec(posting.units(), weight, &cost_spec, tolerance)
+        units_from_cost_spec(posting.units(), weight, cost_spec, tolerance)
     } else if let Some(price_spec) = posting.price() {
-        units_from_price_spec(posting.units(), weight, &price_spec, tolerance)
+        units_from_price_spec(posting.units(), weight, price_spec, tolerance)
     } else {
         posting.units().map(|units| UnitsAndConversion {
             units,

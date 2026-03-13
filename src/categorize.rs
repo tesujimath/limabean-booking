@@ -6,18 +6,18 @@ use super::{
     PostingBookingError, PostingSpec, PriceSpec, TransactionBookingError,
 };
 
-pub(crate) struct CategorizedByCurrency<B, P>(
-    pub(crate) HashMapOfVec<B::Currency, AnnotatedPosting<P, B::Currency>>,
+pub(crate) struct CategorizedByCurrency<'p, B, P>(
+    pub(crate) HashMapOfVec<B::Currency, AnnotatedPosting<'p, P, B::Currency>>,
 )
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>;
 
 // See OG Beancount function of the same name
-pub(crate) fn categorize_by_currency<'a, 'b, B, P, I>(
-    postings: &'b [P],
+pub(crate) fn categorize_by_currency<'a, 'p, B, P, I>(
+    postings: &'_ [&'p P],
     inventory: I,
-) -> Result<CategorizedByCurrency<B, P>, BookingError>
+) -> Result<CategorizedByCurrency<'p, B, P>, BookingError>
 where
     B: BookingTypes + 'a,
     P: PostingSpec<Types = B> + Debug + 'a,
@@ -52,18 +52,18 @@ where
     Ok(CategorizedByCurrency(currency_groups))
 }
 
-pub(crate) fn categorize_with_auto_postings_and_unknowns<B, P>(
-    postings: &[P],
-    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<P, B::Currency>>,
-    auto_postings: &mut HashMap<Option<B::Currency>, AnnotatedPosting<P, B::Currency>>,
-    unknown: &mut Vec<AnnotatedPosting<P, B::Currency>>,
+pub(crate) fn categorize_with_auto_postings_and_unknowns<'p, B, P>(
+    postings: &[&'p P],
+    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<'p, P, B::Currency>>,
+    auto_postings: &mut HashMap<Option<B::Currency>, AnnotatedPosting<'p, P, B::Currency>>,
+    unknown: &mut Vec<AnnotatedPosting<'p, P, B::Currency>>,
 ) -> Result<(), BookingError>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B> + Debug,
 {
     for (idx, posting) in postings.iter().enumerate() {
-        let annotated = annotate(posting, idx);
+        let annotated = annotate(*posting, idx);
 
         let bucket = annotated.bucket();
 
@@ -87,7 +87,7 @@ where
 }
 
 // annotate a posting along with its index in the list of postings
-fn annotate<B, P>(posting: &P, idx: usize) -> AnnotatedPosting<P, B::Currency>
+fn annotate<'p, B, P>(posting: &'p P, idx: usize) -> AnnotatedPosting<'p, P, B::Currency>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B> + Debug,
@@ -105,7 +105,7 @@ where
         .or(posting_cost_currency);
 
     AnnotatedPosting {
-        posting: posting.clone(),
+        posting,
         idx,
         currency,
         cost_currency,
@@ -113,9 +113,9 @@ where
     }
 }
 
-fn infer_unknown_from_single_currency_group<B, P>(
-    unknown: AnnotatedPosting<P, B::Currency>,
-    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<P, B::Currency>>,
+fn infer_unknown_from_single_currency_group<'p, B, P>(
+    unknown: AnnotatedPosting<'p, P, B::Currency>,
+    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<'p, P, B::Currency>>,
 ) where
     B: BookingTypes,
     P: PostingSpec<Types = B> + Debug,
@@ -151,10 +151,10 @@ fn infer_unknown_from_single_currency_group<B, P>(
     currency_groups.push_or_insert(only_bucket.clone(), inferred);
 }
 
-pub(crate) fn infer_unknowns_from_account_inference<'a, 'b, B, P, I>(
-    unknown: Vec<AnnotatedPosting<P, B::Currency>>,
+pub(crate) fn infer_unknowns_from_account_inference<'a, 'b, 'p, B, P, I>(
+    unknown: Vec<AnnotatedPosting<'p, P, B::Currency>>,
     inventory: I,
-    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<P, B::Currency>>,
+    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<'p, P, B::Currency>>,
 ) -> Result<(), BookingError>
 where
     B: BookingTypes + 'a,
@@ -175,9 +175,9 @@ where
     }
     Ok(())
 }
-pub(crate) fn categorize_auto_postings<B, P>(
-    mut auto_postings: HashMap<Option<B::Currency>, AnnotatedPosting<P, B::Currency>>,
-    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<P, B::Currency>>,
+pub(crate) fn categorize_auto_postings<'p, B, P>(
+    mut auto_postings: HashMap<Option<B::Currency>, AnnotatedPosting<'p, P, B::Currency>>,
+    currency_groups: &mut HashMapOfVec<B::Currency, AnnotatedPosting<'p, P, B::Currency>>,
 ) -> Result<(), BookingError>
 where
     B: BookingTypes,

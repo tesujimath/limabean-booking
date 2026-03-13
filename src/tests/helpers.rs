@@ -155,7 +155,7 @@ fn ordinal(i: usize) -> String {
 
 // it's only a test, bah!
 #[allow(clippy::too_many_arguments)]
-fn book_and_check_error<'a, 'b, T>(
+fn book_and_check_error<'a, 'p, T>(
     date: Date,
     postings: &[&'a parser::Spanned<parser::Posting<'a>>],
     inventory: &mut Inventory<LimaParserBookingTypes<'a>>,
@@ -164,7 +164,7 @@ fn book_and_check_error<'a, 'b, T>(
     expected_err: Option<&BookingError>,
     location_in_case_of_error: &str,
     source_in_case_of_error: &str,
-) -> Option<Bookings<LimaParserBookingTypes<'a>, &'a parser::Spanned<parser::Posting<'a>>>>
+) -> Option<Bookings<'p, LimaParserBookingTypes<'a>, parser::Spanned<parser::Posting<'a>>>>
 where
     T: Tolerance<Types = LimaParserBookingTypes<'a>> + Copy,
 {
@@ -192,9 +192,9 @@ where
     }
 }
 
-fn check_inventory_as_expected<'a, 'b, T>(
+fn check_inventory_as_expected<'a, 'p, T>(
     actual_inventory: Inventory<LimaParserBookingTypes<'a>>,
-    directives: &'a [parser::Spanned<parser::Directive<'a>>],
+    directives: &'p [parser::Spanned<parser::Directive<'a>>],
     tolerance: T,
     method: Booking,
 ) where
@@ -225,12 +225,14 @@ fn check_inventory_as_expected<'a, 'b, T>(
     assert_eq!(&actual_inventory, &expected_inventory);
 }
 
-fn check_postings_as_expected<'a>(
+fn check_postings_as_expected<'a, 'p>(
     actual_postings: Vec<
-        Interpolated<LimaParserBookingTypes<'a>, &'a parser::Spanned<parser::Posting<'a>>>,
+        Interpolated<LimaParserBookingTypes<'a>, parser::Spanned<parser::Posting<'a>>>,
     >,
-    directives: &'a [parser::Spanned<parser::Directive<'a>>],
-) {
+    directives: &'p [parser::Spanned<parser::Directive<'a>>],
+) where
+    'a: 'p,
+{
     if let Some((_date, expected_postings, _)) = get_postings(directives, BOOKED_TAG).next() {
         let actual = actual_postings
             .into_iter()
@@ -319,10 +321,13 @@ fn check_postings_as_expected<'a>(
     }
 }
 
-fn get_postings<'a>(
-    directives: &'a [parser::Spanned<parser::Directive<'a>>],
+fn get_postings<'a, 'p>(
+    directives: &'p [parser::Spanned<parser::Directive<'a>>],
     tag0: &'static str,
-) -> impl Iterator<Item = (Date, Vec<&'a parser::Spanned<parser::Posting<'a>>>, String)> {
+) -> impl Iterator<Item = (Date, Vec<&'p parser::Spanned<parser::Posting<'a>>>, String)>
+where
+    'a: 'p,
+{
     directives
         .iter()
         .filter(move |d| d.metadata().tags().any(|tag| tag.item().as_ref() == tag0))

@@ -26,8 +26,8 @@ pub trait PostingSpec: Clone + Debug {
     fn account(&self) -> PostingSpecAccount<Self>;
     fn units(&self) -> Option<PostingSpecNumber<Self>>;
     fn currency(&self) -> Option<PostingSpecCurrency<Self>>;
-    fn cost(&self) -> Option<Self::CostSpec>;
-    fn price(&self) -> Option<Self::PriceSpec>;
+    fn cost(&self) -> Option<&Self::CostSpec>;
+    fn price(&self) -> Option<&Self::PriceSpec>;
 }
 
 pub type PostingSpecAccount<T> = <<T as PostingSpec>::Types as BookingTypes>::Account;
@@ -386,23 +386,23 @@ where
 
 /// The interpolated postings and updated inventory after booking all postings in a transaction.
 #[derive(Debug)]
-pub struct Bookings<B, P>
+pub struct Bookings<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
 {
-    pub interpolated_postings: Vec<Interpolated<B, P>>,
+    pub interpolated_postings: Vec<Interpolated<'p, B, P>>,
     pub updated_inventory: Inventory<B>,
 }
 
 /// An interpolated posting is one complete with any fields which were missing from its [PostingSpec].
 #[derive(Clone, Debug)]
-pub struct Interpolated<B, P>
+pub struct Interpolated<'p, B, P>
 where
     B: BookingTypes,
     P: PostingSpec<Types = B>,
 {
-    pub(crate) posting: P,
+    pub(crate) posting: &'p P,
     pub(crate) idx: usize,
     pub units: B::Number,
     pub currency: B::Currency,

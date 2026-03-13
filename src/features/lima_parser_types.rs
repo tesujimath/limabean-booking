@@ -16,13 +16,13 @@ impl<'a> BookingTypes for LimaParserBookingTypes<'a> {
     type Label = &'a str;
 }
 
-impl<'a> PostingSpec for &'a parser::Spanned<parser::Posting<'a>> {
+impl<'a> PostingSpec for parser::Spanned<parser::Posting<'a>> {
     type Types = LimaParserBookingTypes<'a>;
-    type CostSpec = &'a parser::CostSpec<'a>;
-    type PriceSpec = &'a parser::PriceSpec<'a>;
+    type CostSpec = parser::CostSpec<'a>;
+    type PriceSpec = parser::PriceSpec<'a>;
 
     fn account(&self) -> &'a str {
-        parser::Posting::account(self).item().as_ref()
+        parser::Posting::account(self).item().into()
     }
 
     fn currency(&self) -> Option<parser::Currency<'a>> {
@@ -33,26 +33,26 @@ impl<'a> PostingSpec for &'a parser::Spanned<parser::Posting<'a>> {
         parser::Posting::amount(self).map(|amount| amount.item().value())
     }
 
-    fn cost(&self) -> Option<Self::CostSpec> {
+    fn cost(&self) -> Option<&Self::CostSpec> {
         self.cost_spec().as_ref().map(|cost_spec| cost_spec.item())
     }
 
-    fn price(&self) -> Option<Self::PriceSpec> {
+    fn price(&self) -> Option<&Self::PriceSpec> {
         self.price_annotation()
             .as_ref()
             .map(|cost_spec| cost_spec.item())
     }
 }
 
-impl<'a> BookingTypes for &'a parser::CostSpec<'a> {
-    type Account = &'a str;
-    type Date = time::Date;
-    type Currency = parser::Currency<'a>;
-    type Number = Decimal;
-    type Label = &'a str;
-}
+// impl<'a> BookingTypes for &'a parser::CostSpec<'a> {
+//     type Account = &'a str;
+//     type Date = time::Date;
+//     type Currency = parser::Currency<'a>;
+//     type Number = Decimal;
+//     type Label = &'a str;
+// }
 
-impl<'a> CostSpec for &'a parser::CostSpec<'a> {
+impl<'a> CostSpec for parser::CostSpec<'a> {
     type Types = LimaParserBookingTypes<'a>;
 
     fn currency(&self) -> Option<parser::Currency<'a>> {
@@ -72,7 +72,7 @@ impl<'a> CostSpec for &'a parser::CostSpec<'a> {
     }
 
     fn label(&self) -> Option<&'a str> {
-        parser::CostSpec::label(self).map(|label| label.item().as_ref())
+        parser::CostSpec::label(self).map(|label| *label.item())
     }
 
     fn merge(&self) -> bool {
@@ -80,15 +80,15 @@ impl<'a> CostSpec for &'a parser::CostSpec<'a> {
     }
 }
 
-impl<'a> BookingTypes for &'a parser::PriceSpec<'a> {
-    type Account = &'a str;
-    type Date = time::Date;
-    type Currency = parser::Currency<'a>;
-    type Number = Decimal;
-    type Label = &'a str;
-}
+// impl<'a> BookingTypes for &'a parser::PriceSpec<'a> {
+//     type Account = &'a str;
+//     type Date = time::Date;
+//     type Currency = parser::Currency<'a>;
+//     type Number = Decimal;
+//     type Label = &'a str;
+// }
 
-impl<'a> PriceSpec for &'a parser::PriceSpec<'a> {
+impl<'a> PriceSpec for parser::PriceSpec<'a> {
     type Types = LimaParserBookingTypes<'a>;
 
     fn currency(&self) -> Option<parser::Currency<'a>> {

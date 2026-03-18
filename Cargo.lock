@@ -67,15 +67,16 @@ checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "beancount-parser-lima"
-version = "0.14.5"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f59f529d078d475a73cd4bd5fac955333ee59a3d45a73ede464c8462833bee65"
+checksum = "04a6b00966ddd31b2663e208c6347615535f228e22ae3dd91f50bab2e0f4e849"
 dependencies = [
  "anyhow",
  "ariadne",
  "chumsky",
  "either",
  "glob",
+ "itertools",
  "lazy_format",
  "logos",
  "protobuf",
@@ -388,6 +389,15 @@ dependencies = [
  "hashbrown 0.16.1",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "itertools"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+dependencies = [
+ "either",
 ]
 
 [[package]]

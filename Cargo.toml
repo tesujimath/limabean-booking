@@ -9,8 +9,8 @@ repository = "https://github.com/tesujimath/limabean"
 readme = "README.md"
 
 [dependencies]
-beancount-parser-lima = { version = "0.14.5", optional = true }
-# beancount-parser-lima = { version = "0.14.5", path = "../../beancount-parser-lima", optional = true }
+beancount-parser-lima = { version = "0.15.0", optional = true }
+# beancount-parser-lima = { version = "0.15.0", path = "../beancount-parser-lima", optional = true }
 rust_decimal = { version = "1.37.2", optional = true }
 hashbrown = { version = "0.15.4" }
 strum_macros = { version = "0.27.2" }
@@ -18,7 +18,8 @@ time = { version = "0.3.41" }
 tracing = { version = "0.1.41" }
 
 [dev-dependencies]
-beancount-parser-lima = { version = "0.14.5" }
+beancount-parser-lima = { version = "0.15.0" }
+# beancount-parser-lima = { version = "0.15.0", path = "../beancount-parser-lima" }
 rstest = { version = "0.26.1" }
 rust_decimal_macros = { version = "1.37.2" }
 time = { version = "0.3.41", features = ["macros"] }

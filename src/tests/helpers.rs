@@ -34,7 +34,7 @@ pub(crate) fn booking_test_err(source: &str, method: Booking, err: BookingError)
 fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError>) {
     let sources = parser::BeancountSources::from(source);
     let parser = parser::BeancountParser::new(&sources);
-    let error_w = &stderr();
+    let error_w = &mut stderr();
 
     if !is_supported_method(method) {
         panic!("Failing for now because Booking::{method} is unsupported");
@@ -355,7 +355,7 @@ pub(crate) fn positions_test(
 ) {
     let sources = parser::BeancountSources::from(source);
     let parser = parser::BeancountParser::new(&sources);
-    let error_w = &stderr();
+    let error_w = &mut stderr();
 
     if !is_supported_method(method) {
         panic!("Failing for now because Booking::{method} is unsupported");

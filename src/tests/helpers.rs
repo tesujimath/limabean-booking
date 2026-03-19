@@ -2,7 +2,7 @@
 use beancount_parser_lima::{self as parser, DirectiveVariant};
 use hashbrown::HashMap;
 use rust_decimal::Decimal;
-use std::{collections::HashSet, io::stderr, iter::once};
+use std::{borrow::Cow, collections::HashSet, io::stderr, iter::once};
 use time::Date;
 use tracing_subscriber::EnvFilter;
 
@@ -290,7 +290,7 @@ fn check_postings_as_expected<'a, 'p>(
                     let per_unit = cost.per_unit().map(|x| x.item().value());
                     let currency = cost.currency().map(|x| x.item().into());
                     let date = cost.date().map(|x| x.item());
-                    let label = cost.label().map(|x| *x.item());
+                    let label = cost.label().map(|x| Cow::Borrowed(*x.item()));
                     let merge = cost.merge();
                     (
                         expected_account,
@@ -392,7 +392,8 @@ pub(crate) fn positions_test(
                                 .item();
                             let cost_date =
                                 *cost_spec.date().expect("cost date is required").item();
-                            let cost_label = cost_spec.label().map(|label| *label.item());
+                            let cost_label =
+                                cost_spec.label().map(|label| Cow::Borrowed(*label.item()));
                             let merge = cost_spec.merge();
                             let cost = Cost {
                                 date: cost_date,
@@ -441,14 +442,14 @@ pub(crate) fn positions_test(
                                     cost.date,
                                     cost.per_unit,
                                     cost.currency,
-                                    cost.label.as_ref().map(|label| *label),
+                                    cost.label.as_ref().map(|label| label.as_ref()),
                                     cost.merge,
                                 )
                             }),
                         )
                     })
                     .collect::<Vec<_>>();
-                assert_eq!(&actual_positions, expected_positions);
+                assert_eq!(&actual_positions, &expected_positions);
             }
         }
     }

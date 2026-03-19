@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 
 use super::{Booking, BookingTypes, CostSpec, PostingSpec, PriceSpec, Tolerance};
 use beancount_parser_lima as parser;
@@ -13,7 +13,7 @@ impl<'a> BookingTypes for LimaParserBookingTypes<'a> {
     type Date = time::Date;
     type Currency = &'a str;
     type Number = Decimal;
-    type Label = &'a str;
+    type Label = Cow<'a, str>;
 }
 
 impl<'a> PostingSpec for parser::Spanned<parser::Posting<'a>> {
@@ -63,8 +63,8 @@ impl<'a> CostSpec for parser::CostSpec<'a> {
         parser::CostSpec::date(self).map(|date| *date.item())
     }
 
-    fn label(&self) -> Option<&'a str> {
-        parser::CostSpec::label(self).map(|label| *label.item())
+    fn label(&self) -> Option<Cow<'a, str>> {
+        parser::CostSpec::label(self).map(|label| Cow::Borrowed(*label.item()))
     }
 
     fn merge(&self) -> bool {

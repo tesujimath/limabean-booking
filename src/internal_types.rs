@@ -113,7 +113,8 @@ where
                     match (cost_spec.total(), cost_spec.per_unit(), p.units()) {
                         (Some(cost_total), _, _) => Some(cost_total),
                         (None, Some(cost_per_unit), Some(units)) => {
-                            let weight = (cost_per_unit * units).rescaled(units.scale());
+                            let weight = (cost_per_unit * units)
+                                .rescaled(sane_scale(units.scale(), cost_per_unit.scale()));
                             Some(weight)
                         }
                         _ => None,
@@ -122,7 +123,8 @@ where
                     match (price_spec.total(), price_spec.per_unit(), p.units()) {
                         (Some(price_total), _, _) => Some(price_total),
                         (None, Some(price_per_unit), Some(units)) => {
-                            let weight = (price_per_unit * units).rescaled(units.scale());
+                            let weight = (price_per_unit * units)
+                                .rescaled(sane_scale(units.scale(), price_per_unit.scale()));
                             Some(weight)
                         }
                         _ => None,
@@ -132,5 +134,13 @@ where
                 }
             }
         }
+    }
+}
+
+fn sane_scale(units_scale: u32, cost_price_scale: u32) -> u32 {
+    if units_scale == 0 {
+        cost_price_scale
+    } else {
+        units_scale
     }
 }

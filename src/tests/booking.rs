@@ -1450,3 +1450,36 @@ fn test_combined_reduce__same_label() {
         Booking::Strict,
     );
 }
+
+#[test]
+// https://github.com/tesujimath/limabean/issues/93
+fn test_robin_hood() {
+    booking_test_ok(
+        r#"
+2020-07-23 * "Bought 1 shares of ABCD" "" #apply #bal
+  Assets:US:Robinhood:ABCD       1 ABCD {55.84 USD, 2020-07-23}
+  Assets:US:Robinhood:Cash  -55.84 USD
+
+2020-07-23 * "Bought 1 shares of ABCD" "" #ex #booked
+  Assets:US:Robinhood:ABCD       1 ABCD {55.84 USD, 2020-07-23}
+  Assets:US:Robinhood:Cash  -55.84 USD
+"#,
+        Booking::Strict,
+    );
+}
+
+#[test]
+fn test_price_rounding() {
+    booking_test_ok(
+        r#"
+2013-01-01 * "Buy CRA shares" #apply #bal
+  Assets:CA:RBC-Investing:Taxable-CAD:Cash -1395.43 CAD @ 0.6861 USD
+  Assets:US:TD:Checking
+
+2013-01-01 * "Buy CRA shares" #ex #booked
+  Assets:CA:RBC-Investing:Taxable-CAD:Cash -1395.43 CAD ; @ 0.6861 USD
+  Assets:US:TD:Checking 957.40 USD
+"#,
+        Booking::Strict,
+    );
+}

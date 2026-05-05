@@ -16,6 +16,7 @@ const ANTE_TAG: &str = "ante";
 const EX_TAG: &str = "ex";
 const APPLY_TAG: &str = "apply";
 const APPLY_COMBINED_TAG: &str = "apply-combined";
+const MUST_BALANCE_TAG: &str = "bal";
 const BOOKED_TAG: &str = "booked";
 // unused:
 // const AMBI_MATCHES_TAG: &str = "ambi-matches";
@@ -70,8 +71,9 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
             init_tracing();
 
             // run a separate test for each posting tagged with apply
-            for (i_apply, (date, postings, apply_string)) in
-                get_postings(&directives, APPLY_TAG).enumerate()
+            for (i_apply, (date, postings, apply_string, must_balance)) in
+                get_postings_and_whether_tagged(&directives, APPLY_TAG, Some(MUST_BALANCE_TAG))
+                    .enumerate()
             {
                 let mut actual_inventory = ante_inventory.clone().into();
 
@@ -86,6 +88,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
                     &mut actual_inventory,
                     &tolerance,
                     method,
+                    must_balance,
                     expected_err.as_ref(),
                     &location,
                     &apply_string,
@@ -101,14 +104,18 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
             }
 
             // run a single tests for all combined, if any
-            let apply_combined = get_postings(&directives, APPLY_COMBINED_TAG)
-                .enumerate()
-                .collect::<Vec<_>>();
+            let apply_combined = get_postings_and_whether_tagged(
+                &directives,
+                APPLY_COMBINED_TAG,
+                Some(MUST_BALANCE_TAG),
+            )
+            .enumerate()
+            .collect::<Vec<_>>();
             if !apply_combined.is_empty() {
                 let mut actual_inventory = ante_inventory.clone().into();
                 let mut actual_postings = Vec::default();
 
-                for (i_apply, (date, postings, apply_string)) in apply_combined {
+                for (i_apply, (date, postings, apply_string, must_balance)) in apply_combined {
                     let location = format!("{} {}", ordinal(i_apply), APPLY_TAG);
                     if let Some(Bookings {
                         interpolated_postings,
@@ -120,6 +127,7 @@ fn booking_test(source: &str, method: Booking, expected_err: Option<BookingError
                         &mut actual_inventory,
                         &tolerance,
                         method,
+                        must_balance,
                         expected_err.as_ref(),
                         &location,
                         &apply_string,
@@ -161,6 +169,7 @@ fn book_and_check_error<'a, 'p, T>(
     inventory: &mut Inventory<LimaParserBookingTypes<'a>>,
     tolerance: &T,
     method: Booking,
+    must_balance: bool,
     expected_err: Option<&BookingError>,
     location_in_case_of_error: &str,
     source_in_case_of_error: &str,
@@ -178,7 +187,19 @@ where
         ),
         expected_err,
     ) {
-        (Ok(BookingsAndResiduals { bookings, .. }), None) => Some(bookings),
+        (
+            Ok(BookingsAndResiduals {
+                bookings,
+                residuals,
+            }),
+            None,
+        ) => {
+            if must_balance && !residuals.is_empty() {
+                panic!("unbalanced transaction, residual {:?}", &residuals);
+            } else {
+                Some(bookings)
+            }
+        }
         (Err(e), Some(expected_err)) => {
             assert_eq!(&e, expected_err);
             None
@@ -328,15 +349,37 @@ fn get_postings<'a, 'p>(
 where
     'a: 'p,
 {
+    get_postings_and_whether_tagged(directives, tag0, None)
+        .map(|(date, postings, description, _is_tagged)| (date, postings, description))
+}
+
+fn get_postings_and_whether_tagged<'a, 'p>(
+    directives: &'p [parser::Spanned<parser::Directive<'a>>],
+    tag0: &'static str,
+    tag1: Option<&'static str>,
+) -> impl Iterator<
+    Item = (
+        Date,
+        Vec<&'p parser::Spanned<parser::Posting<'a>>>,
+        String,
+        bool,
+    ),
+>
+where
+    'a: 'p,
+{
     directives
         .iter()
         .filter(move |d| d.metadata().tags().any(|tag| tag.item().as_ref() == tag0))
-        .filter_map(|d| {
+        .filter_map(move |d| {
             if let parser::DirectiveVariant::Transaction(t) = d.variant() {
                 Some((
                     *d.date().item(),
                     t.postings().collect::<Vec<_>>(),
                     d.to_string(),
+                    tag1.is_some_and(|tag1| {
+                        d.metadata().tags().any(|tag| tag.item().as_ref() == tag1)
+                    }),
                 ))
             } else {
                 None

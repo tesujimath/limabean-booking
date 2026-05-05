@@ -1,5 +1,5 @@
 use hashbrown::{HashMap, hash_map::Entry};
-use std::{fmt::Debug, hash::Hash, ops::Deref};
+use std::{cmp::max, fmt::Debug, hash::Hash, ops::Deref};
 
 use super::{BookingTypes, CostSpec, Interpolated, Number, PostingSpec, PriceSpec};
 
@@ -113,7 +113,8 @@ where
                     match (cost_spec.total(), cost_spec.per_unit(), p.units()) {
                         (Some(cost_total), _, _) => Some(cost_total),
                         (None, Some(cost_per_unit), Some(units)) => {
-                            let weight = (cost_per_unit * units).rescaled(units.scale());
+                            let weight = (cost_per_unit * units)
+                                .rescaled(max(units.scale(), cost_per_unit.scale()));
                             Some(weight)
                         }
                         _ => None,
@@ -122,7 +123,8 @@ where
                     match (price_spec.total(), price_spec.per_unit(), p.units()) {
                         (Some(price_total), _, _) => Some(price_total),
                         (None, Some(price_per_unit), Some(units)) => {
-                            let weight = (price_per_unit * units).rescaled(units.scale());
+                            let weight = (price_per_unit * units)
+                                .rescaled(max(units.scale(), price_per_unit.scale()));
                             Some(weight)
                         }
                         _ => None,

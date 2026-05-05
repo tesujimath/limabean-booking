@@ -1,5 +1,5 @@
 use hashbrown::{HashMap, hash_map::Entry};
-use std::{cmp::max, fmt::Debug, hash::Hash, ops::Deref};
+use std::{fmt::Debug, hash::Hash, ops::Deref};
 
 use super::{BookingTypes, CostSpec, Interpolated, Number, PostingSpec, PriceSpec};
 
@@ -114,7 +114,7 @@ where
                         (Some(cost_total), _, _) => Some(cost_total),
                         (None, Some(cost_per_unit), Some(units)) => {
                             let weight = (cost_per_unit * units)
-                                .rescaled(max(units.scale(), cost_per_unit.scale()));
+                                .rescaled(sane_scale(units.scale(), cost_per_unit.scale()));
                             Some(weight)
                         }
                         _ => None,
@@ -124,7 +124,7 @@ where
                         (Some(price_total), _, _) => Some(price_total),
                         (None, Some(price_per_unit), Some(units)) => {
                             let weight = (price_per_unit * units)
-                                .rescaled(max(units.scale(), price_per_unit.scale()));
+                                .rescaled(sane_scale(units.scale(), price_per_unit.scale()));
                             Some(weight)
                         }
                         _ => None,
@@ -134,5 +134,13 @@ where
                 }
             }
         }
+    }
+}
+
+fn sane_scale(units_scale: u32, cost_price_scale: u32) -> u32 {
+    if units_scale == 0 {
+        cost_price_scale
+    } else {
+        units_scale
     }
 }

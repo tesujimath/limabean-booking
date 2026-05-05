@@ -1467,3 +1467,19 @@ fn test_robin_hood() {
         Booking::Strict,
     );
 }
+
+#[test]
+fn test_price_rounding() {
+    booking_test_ok(
+        r#"
+2013-01-01 * "Buy CRA shares" #apply #bal
+  Assets:CA:RBC-Investing:Taxable-CAD:Cash -1395.43 CAD @ 0.6861 USD
+  Assets:US:TD:Checking
+
+2013-01-01 * "Buy CRA shares" #ex #booked
+  Assets:CA:RBC-Investing:Taxable-CAD:Cash -1395.43 CAD ; @ 0.6861 USD
+  Assets:US:TD:Checking 957.40 USD
+"#,
+        Booking::Strict,
+    );
+}

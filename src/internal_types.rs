@@ -105,7 +105,21 @@ where
         use BookedOrUnbookedPosting::*;
 
         match self {
-            Booked(booked) => Some(booked.units),
+            Booked(booked) => {
+                if let Some(costs) = &booked.cost {
+                    let weight = costs
+                        .adjustments
+                        .iter()
+                        .map(|adj| {
+                            (adj.units * adj.per_unit)
+                                .rescaled(sane_scale(adj.units.scale(), adj.per_unit.scale()))
+                        })
+                        .sum();
+                    Some(weight)
+                } else {
+                    Some(booked.units)
+                }
+            }
             Unbooked(unbooked) => {
                 let p = &unbooked.posting;
 

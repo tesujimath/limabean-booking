@@ -461,6 +461,27 @@ fn test_reduce__missing_units_number() {
     );
 }
 
+// multiple {} lot reductions that must balance against buys at cost in another currency
+#[test]
+fn test_reduce_multiple_bracket_lots_then_buy_at_cost__balances() {
+    booking_test_ok(
+        r#"
+2016-01-01 * #ante
+  Assets:Stocks:HOOL    10 HOOL {100.00 USD, 2016-01-01}
+  Assets:Stocks:GOOG     5 GOOG {100.00 USD, 2016-01-01}
+
+2016-06-01 * #apply #bal
+  Assets:Stocks:HOOL   -10 HOOL {}
+  Assets:Stocks:GOOG    -5 GOOG {}
+  Assets:Stocks:AAPL    20 AAPL {75.00 USD}
+
+2016-06-01 * #ex
+  Assets:Stocks:AAPL    20 AAPL {75.00 USD, 2016-06-01}
+"#,
+        Booking::Fifo,
+    );
+}
+
 // TODO self reductions tests:
 // test_has_self_reductions__simple
 // test_has_self_reductions__inverted_signs

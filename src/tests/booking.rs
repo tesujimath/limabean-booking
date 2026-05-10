@@ -1483,3 +1483,23 @@ fn test_price_rounding() {
         Booking::Strict,
     );
 }
+
+#[test]
+fn test_reduce__date_spec__depleted_inventory() {
+    // Posting 0 fully consumes the ante lot; posting 1 then tries to reduce a different
+    // date lot against now-empty inventory. Should give NoPositionMatches, not CannotInferCurrency.
+    booking_test_err(
+        r#"
+2024-12-13 * #ante
+  Assets:Account     6.74 GC { 1 USD }
+  Income:Other      -6.74 USD
+
+2024-12-18 * #apply
+  Assets:Account     -6.74 GC { 2024-12-13 }
+  Assets:Account     -0.21 GC { 2024-12-18 }
+  Income:Other        6.95 USD
+"#,
+        Booking::Strict,
+        BookingError::Posting(1, PostingBookingError::NoPositionMatches),
+    );
+}

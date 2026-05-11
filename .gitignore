@@ -7,3 +7,4 @@ target/
 /result
 limabean.log*
 .rebel_readline_history
+*~

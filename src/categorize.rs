@@ -162,9 +162,19 @@ where
     I: Fn(B::Account) -> Option<&'a Positions<B>> + Copy,
 {
     let mut account_currency_lookup = HashMap::<B::Account, Option<B::Currency>>::default();
+    let mut lot_cost_currency_lookup = HashMap::<B::Account, Option<B::Currency>>::default();
     for u in unknown {
         let u_account = u.posting.account();
-        if let Some(bucket) = account_currency(u_account, inventory, &mut account_currency_lookup) {
+        // For postings with a cost spec but no cost currency (e.g. {}), infer the bucket
+        // from the cost currency of existing lots rather than the position currency. This
+        // places {} reductions in the same group as explicit-cost buys so they can balance.
+        let bucket = if u.posting.cost().is_some() && u.cost_currency.is_none() {
+            lot_cost_currency(u_account.clone(), inventory, &mut lot_cost_currency_lookup)
+                .or_else(|| account_currency(u_account, inventory, &mut account_currency_lookup))
+        } else {
+            account_currency(u_account, inventory, &mut account_currency_lookup)
+        };
+        if let Some(bucket) = bucket {
             currency_groups.push_or_insert(bucket, u);
         } else {
             return Err(BookingError::Posting(
@@ -248,6 +258,38 @@ where
         };
 
         account_currency.insert(account.clone(), currency.clone());
+
+        currency
+    })
+}
+
+// lookup unique cost currency of lots in the account, with memoization
+fn lot_cost_currency<'a, B, I>(
+    account: B::Account,
+    inventory: I,
+    cache: &mut HashMap<B::Account, Option<B::Currency>>,
+) -> Option<B::Currency>
+where
+    B: BookingTypes + 'a,
+    I: Fn(B::Account) -> Option<&'a Positions<B>> + Copy,
+{
+    cache.get(&account).cloned().unwrap_or_else(|| {
+        let currency = if let Some(positions) = inventory(account.clone()) {
+            let currencies = positions
+                .iter()
+                .filter_map(|pos| pos.cost.as_ref().map(|c| c.currency.clone()))
+                .collect::<HashSet<B::Currency>>();
+
+            if currencies.len() == 1 {
+                currencies.into_iter().next()
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        cache.insert(account, currency.clone());
 
         currency
     })

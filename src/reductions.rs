@@ -6,7 +6,7 @@ use crate::{BookingTypes, tolerance_residual};
 use super::{
     AnnotatedPosting, BookedOrUnbookedPosting, Booking, BookingError, Cost, CostSpec, Interpolated,
     Inventory, Number, Position, Positions, PostingBookingError, PostingCost, PostingCosts,
-    PostingSpec, Tolerance,
+    PostingSpec, Sign, Tolerance,
 };
 
 #[derive(Debug)]
@@ -88,8 +88,24 @@ where
             annotated.posting.cost(),
             previous_positions,
         )
-        && is_potential_reduction(posting_units, posting_currency, positions)
     {
+        if !is_potential_reduction(posting_units, posting_currency, positions) {
+            if posting_units.sign() == Some(Sign::Negative)
+                && !positions.iter().any(|pos| &pos.currency == posting_currency)
+            {
+                // Reduction attempt against a currency completely depleted by earlier postings
+                // in the same transaction — the lot the user referenced does not exist.
+                return Err(BookingError::Posting(
+                    annotated.idx,
+                    PostingBookingError::NoPositionMatches,
+                ));
+            }
+            return Ok(Reduced {
+                reducing_posting: Unbooked(annotated),
+                updated_positions: None,
+            });
+        }
+
         // find positions whose costs match what we have
         let matched = match_positions(posting_currency, annotated.posting.cost(), positions);
 
